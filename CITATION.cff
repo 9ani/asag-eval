@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "asag-eval: reproducible evaluation of automated short-answer grading models"
+authors:
+  - family-names: Uapov
+    given-names: Gani
+    affiliation: Astana IT University
+version: 0.1.0
+date-released: "2026-10-08"
+license: MIT
+repository-code: "https://github.com/9ani/asag-eval"
+keywords:
+  - automated short-answer grading
+  - evaluation
+  - quadratic weighted kappa
+  - cluster bootstrap
+  - calibration
+  - selective prediction
