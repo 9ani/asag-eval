@@ -1,6 +1,7 @@
 # asag-eval
 
 [![CI](https://github.com/9ani/asag-eval/actions/workflows/ci.yml/badge.svg)](https://github.com/9ani/asag-eval/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/9ani/asag-eval)](https://github.com/9ani/asag-eval/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)
 
@@ -41,6 +42,13 @@ Python 3.11 or newer.
 
 ```bash
 python -m pip install git+https://github.com/9ani/asag-eval.git
+```
+
+To pin the exact version a paper used, install the wheel attached to a
+[release](https://github.com/9ani/asag-eval/releases):
+
+```bash
+python -m pip install https://github.com/9ani/asag-eval/releases/download/v0.1.0/asag_eval-0.1.0-py3-none-any.whl
 ```
 
 ## Quick start
@@ -179,6 +187,13 @@ and pull request:
 4. **Reproduce**: installs the wheel, regenerates `examples/expected` and fails on any
    difference from the committed results.
 
+Delivery is automated as well ([.github/workflows/release.yml](.github/workflows/release.yml)):
+pushing a version tag such as `v0.1.0` runs the same four jobs and, if they pass,
+publishes the tested wheel and source distribution as a GitHub release.
+
+Changes arrive through pull requests; see [CONTRIBUTING.md](CONTRIBUTING.md). Versions
+are listed in the [CHANGELOG](CHANGELOG.md).
+
 ## Limitations
 
 - Percentile intervals are not bias-corrected. ECE in particular is biased upwards in
@@ -195,6 +210,11 @@ Intelligent System for Analyzing and Evaluating Students' Short Text Answers Usi
 Technologies" (Astana IT University). A fine-tuned language model proposes a 0/1/2 score,
 a risk policy decides whether the answer can be accepted or must be reviewed, and a
 teacher keeps the final word. This package produces the evidence for that policy.
+
+## Citation
+
+If you use this software in research, please cite it. GitHub shows the reference under
+"Cite this repository"; the metadata is in [CITATION.cff](CITATION.cff).
 
 ## License
 
