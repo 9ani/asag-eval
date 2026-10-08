@@ -80,6 +80,13 @@ def test_resample_count_must_be_positive(sample, capsys):
     assert "must be at least 1, got 0" in capsys.readouterr().err
 
 
+def test_a_scale_needs_at_least_two_scores(sample, capsys):
+    with pytest.raises(SystemExit) as exit_info:
+        main(["evaluate", str(sample), "--n-classes", "1"])
+    assert exit_info.value.code == 2
+    assert "must be at least 2, got 1" in capsys.readouterr().err
+
+
 def test_module_can_be_run_with_python_m(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["asag-eval", "--version"])
     with pytest.raises(SystemExit) as exit_info:

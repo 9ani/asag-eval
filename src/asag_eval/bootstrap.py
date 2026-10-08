@@ -51,9 +51,11 @@ def two_sided_p_value(replicates: np.ndarray) -> np.ndarray:
     """Bootstrap p-value per column for "the true value is zero".
 
     Twice the share of replicates on the less likely side of zero, with the usual +1
-    correction so that a finite number of replicates never yields p = 0.
+    correction so that a finite number of replicates never yields p = 0. A statistic that
+    is undefined in every replicate has no p-value (NaN).
     """
     valid = (~np.isnan(replicates)).sum(axis=0)
     not_above = (replicates <= 0).sum(axis=0)
     not_below = (replicates >= 0).sum(axis=0)
-    return np.minimum(1.0, 2 * (np.minimum(not_above, not_below) + 1) / (valid + 1))
+    p_value = np.minimum(1.0, 2 * (np.minimum(not_above, not_below) + 1) / (valid + 1))
+    return np.where(valid == 0, np.nan, p_value)

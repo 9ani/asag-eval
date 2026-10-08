@@ -96,6 +96,11 @@ def test_p_value_is_one_when_there_is_no_difference():
     assert two_sided_p_value(symmetric)[0] == 1.0
 
 
+def test_p_value_is_undefined_without_valid_replicates():
+    # e.g. the difference in kappa when every resample contains a single score
+    assert np.isnan(two_sided_p_value(np.full((20, 1), np.nan))[0])
+
+
 def test_p_value_counts_the_replicates_on_the_far_side_of_zero():
     replicates = np.array([-0.1, -0.2] + [0.3] * 97).reshape(-1, 1)
     # (2 + 1) of (99 + 1) on the smaller side, doubled for a two-sided test.

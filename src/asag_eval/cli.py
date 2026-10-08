@@ -5,7 +5,8 @@ asag-eval compare model.jsonl baseline.jsonl --out results
 """
 
 import argparse
-from collections.abc import Sequence
+import sys
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from asag_eval import __version__
@@ -13,11 +14,14 @@ from asag_eval.data import load_predictions
 from asag_eval.report import compare, evaluate, render_comparison, render_evaluation, write_json
 
 
-def _positive_int(text: str) -> int:
-    value = int(text)
-    if value < 1:
-        raise argparse.ArgumentTypeError(f"must be at least 1, got {value}")
-    return value
+def _int_at_least(minimum: int) -> Callable[[str], int]:
+    def parse(text: str) -> int:
+        value = int(text)
+        if value < minimum:
+            raise argparse.ArgumentTypeError(f"must be at least {minimum}, got {value}")
+        return value
+
+    return parse
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -29,18 +33,18 @@ def _build_parser() -> argparse.ArgumentParser:
     shared = argparse.ArgumentParser(add_help=False)
     shared.add_argument("--out", type=Path, default=Path("results"), help="output directory")
     shared.add_argument(
-        "--n-boot", type=_positive_int, default=2000, help="bootstrap resamples (default: 2000)"
+        "--n-boot", type=_int_at_least(1), default=2000, help="bootstrap resamples (default: 2000)"
     )
     shared.add_argument("--seed", type=int, default=0, help="random seed (default: 0)")
     shared.add_argument(
-        "--n-classes", type=_positive_int, default=3, help="scores are 0..N-1 (default: 3)"
+        "--n-classes", type=_int_at_least(2), default=3, help="scores are 0..N-1 (default: 3)"
     )
     commands = parser.add_subparsers(dest="command", required=True)
 
     one = commands.add_parser("evaluate", parents=[shared], help="evaluate one model")
     one.add_argument("predictions", type=Path, help="JSONL file in the predictions schema")
     one.add_argument(
-        "--bins", type=_positive_int, default=10, help="confidence bins for ECE (default: 10)"
+        "--bins", type=_int_at_least(1), default=10, help="confidence bins for ECE (default: 10)"
     )
     one.add_argument("--no-plots", action="store_true", help="write tables only, no figures")
 
@@ -88,6 +92,8 @@ def main(argv: Sequence[str] | None = None) -> None:
     except (OSError, ValueError) as exc:
         # Bad input is the user's to fix: one clear line and exit code 2, not a traceback.
         parser.exit(2, f"asag-eval: error: {exc}\n")
+    # A file name the console cannot encode must not fail a run whose files are written.
+    sys.stdout.reconfigure(errors="replace")
     # Figures are files, not terminal output: print the tables only.
     print("\n".join(line for line in report.splitlines() if not line.startswith("![")).rstrip())
     print(f"Written to {args.out}")

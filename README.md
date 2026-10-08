@@ -110,16 +110,16 @@ A JSON Lines file: one object per line, one line per graded answer.
 
 | Field | Required | Meaning |
 | --- | --- | --- |
-| `id` | yes | Unique id of the answer. |
+| `id` | yes | Unique id of the answer: a string or an integer. |
 | `true_score` | yes | Gold score, an integer from 0 to `n_classes - 1`. |
 | `predicted_score` | yes | The model's score, or `null` if its output could not be parsed. |
-| `score_probabilities` | no | Probability of each score; must sum to 1. Enables calibration and risk-coverage. |
+| `score_probabilities` | no | Probability of each score; must sum to 1. Enables calibration and risk-coverage. Give it for every scored answer or for none. |
 | `question_id` | no | The question the answer belongs to: the resampling unit of the bootstrap. |
 
 Without `question_id`, a SciEntsBank-style id such as `EM.45b.299.1` is assigned to
 question `EM.45b`; any other id becomes its own cluster, which reduces the method to the
-ordinary answer-level bootstrap. Other fields are ignored, so a model can keep its raw
-output or latency in the same file.
+ordinary answer-level bootstrap. The report says so explicitly when that happens. Other
+fields are ignored, so a model can keep its raw output or latency in the same file.
 
 Invalid files are rejected with the file name and line number. Answers without a
 predicted score are excluded from the metrics and **counted in the report**, never
@@ -142,6 +142,10 @@ dropped silently.
 Agreement metrics are computed from the confusion matrix and are tested against
 scikit-learn. A metric that is undefined (kappa when only one score occurs) is reported
 as `null`, not as a made-up number.
+
+A threshold cannot separate answers with equal confidence, so ties are handled as one
+group: the risk-coverage curve uses the group's mean error, and the selective table
+accepts every answer at or above the threshold. No result depends on the order of rows.
 
 ## Reproducibility
 

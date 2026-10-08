@@ -20,6 +20,10 @@
     }
   },
   "paired_answers": 397,
+  "unpaired": {
+    "a": 3,
+    "b": 0
+  },
   "questions": 40,
   "settings": {
     "n_boot": 2000,

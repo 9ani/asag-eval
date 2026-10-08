@@ -34,11 +34,20 @@ class Predictions:
     sha256: str
 
 
+def _answer_id(row: dict, line: str) -> str:
+    raw = row["id"]
+    # 1 and 1.0 would become different ids in two files, so only text and integers pass.
+    if isinstance(raw, bool) or not isinstance(raw, (str, int)):
+        raise ValueError(f"{line}: id must be a string or an integer, got {raw!r}")
+    return str(raw)
+
+
 def _score(row: dict, field: str, n_classes: int, line: str) -> int:
     value = row[field]
-    is_number = isinstance(value, (int, float)) and not isinstance(value, bool)
+    is_integer = isinstance(value, int) and not isinstance(value, bool)
     # pandas writes integer columns with missing values as 2.0, so integral floats pass.
-    if not is_number or not float(value).is_integer() or not 0 <= value < n_classes:
+    is_integer = is_integer or (isinstance(value, float) and value.is_integer())
+    if not is_integer or not 0 <= value < n_classes:
         raise ValueError(
             f"{line}: {field} must be an integer from 0 to {n_classes - 1}, got {value!r}"
         )
@@ -74,10 +83,26 @@ def _question_id(row: dict, answer_id: str) -> str:
     return ".".join(answer_id.split(".")[:-2]) or answer_id
 
 
+def _parse(text: str, line: str) -> dict:
+    try:
+        row = json.loads(text)
+    except (ValueError, RecursionError) as exc:
+        # Besides syntax errors: nesting too deep, or an integer too long to convert.
+        reason = exc.msg if isinstance(exc, json.JSONDecodeError) else exc
+        raise ValueError(f"{line}: not valid JSON ({reason})") from exc
+    if not isinstance(row, dict):
+        raise ValueError(f"{line}: expected a JSON object")
+    return row
+
+
 def load_predictions(path: str | Path, n_classes: int = 3) -> Predictions:
     """Read and validate a predictions file; raise ``ValueError`` naming the bad line."""
     path = Path(path)
     content = path.read_bytes()
+    try:
+        text = content.decode("utf-8-sig")  # tolerate the byte order mark editors add
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{path.name}: not valid UTF-8 ({exc.reason})") from exc
     ids: list[str] = []
     questions: list[str] = []
     y_true: list[int] = []
@@ -85,20 +110,17 @@ def load_predictions(path: str | Path, n_classes: int = 3) -> Predictions:
     probs: list[list[float] | None] = []
     seen: set[str] = set()
 
-    for number, text in enumerate(content.decode("utf-8").splitlines(), start=1):
-        if not text.strip():
+    # Split on "\n" only: str.splitlines would also break inside a JSON string that
+    # contains a Unicode line separator.
+    for number, record in enumerate(text.split("\n"), start=1):
+        if not record.strip():
             continue
         line = f"{path.name} line {number}"
-        try:
-            row = json.loads(text)
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"{line}: not valid JSON ({exc.msg})") from exc
-        if not isinstance(row, dict):
-            raise ValueError(f"{line}: expected a JSON object")
+        row = _parse(record, line)
         for field in ("id", "true_score"):
             if row.get(field) is None:
                 raise ValueError(f"{line}: missing '{field}'")
-        answer_id = str(row["id"])
+        answer_id = _answer_id(row, line)
         if answer_id in seen:
             raise ValueError(f"{line}: duplicate id '{answer_id}'")
         seen.add(answer_id)
@@ -115,13 +137,19 @@ def load_predictions(path: str | Path, n_classes: int = 3) -> Predictions:
         raise ValueError(f"{path.name}: no records")
     if not ids:
         raise ValueError(f"{path.name}: no scored answers")
+    without_probs = sum(row is None for row in probs)
+    if 0 < without_probs < len(probs):
+        # A partial file would silently lose the whole calibration analysis.
+        raise ValueError(
+            f"{path.name}: {without_probs} of {len(probs)} scored answers have no "
+            "score_probabilities; give them for every answer or for none"
+        )
     return Predictions(
         ids=tuple(ids),
         question_ids=np.array(questions),
         y_true=np.array(y_true, dtype=np.int64),
         y_pred=np.array(y_pred, dtype=np.int64),
-        # Calibration needs a probability for every scored answer, so it is all or nothing.
-        probs=None if any(row is None for row in probs) else np.array(probs, dtype=float),
+        probs=None if without_probs else np.array(probs, dtype=float),
         n_classes=n_classes,
         n_unscored=len(seen) - len(ids),
         source=path.name,
