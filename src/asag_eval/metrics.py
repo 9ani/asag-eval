@@ -44,7 +44,7 @@ def agreement_metrics(cm: np.ndarray) -> dict[str, float]:
 
 
 def per_class_metrics(cm: np.ndarray) -> list[dict[str, float | int]]:
-    """Precision, recall, F1 and support for each score."""
+    """Precision, recall and F1 for each score, with its gold and predicted counts."""
     hits, predicted, support = np.diag(cm), cm.sum(axis=0), cm.sum(axis=1)
     zeros = np.zeros(len(cm))
     precision = np.divide(hits, predicted, out=zeros.copy(), where=predicted > 0)
@@ -56,6 +56,7 @@ def per_class_metrics(cm: np.ndarray) -> list[dict[str, float | int]]:
             "recall": float(recall[label]),
             "f1": float(f1),
             "support": int(support[label]),
+            "predicted": int(predicted[label]),
         }
         for label, f1 in enumerate(_f1(cm))
     ]

@@ -86,3 +86,5 @@ def test_per_class_metrics_match_scikit_learn():
     assert [row["recall"] for row in rows] == pytest.approx(recall)
     assert [row["f1"] for row in rows] == pytest.approx(f1)
     assert [row["support"] for row in rows] == support.tolist()
+    # The predicted-score distribution shows a model that avoids or overuses a score.
+    assert [row["predicted"] for row in rows] == [2, 3, 1]

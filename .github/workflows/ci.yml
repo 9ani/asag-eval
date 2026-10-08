@@ -65,3 +65,31 @@ jobs:
           name: dist
           path: dist/
           if-no-files-found: error
+
+  reproduce:
+    name: Reproduce reference results
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      # The wheel, not the source tree: this is what a user installs.
+      - run: python -m pip install dist/*.whl
+      - run: asag-eval evaluate examples/sample_predictions.jsonl --out examples/expected
+      - run: >
+          asag-eval compare examples/sample_predictions.jsonl examples/sample_baseline.jsonl
+          --out examples/expected
+      # Figures depend on the font renderer, so only the numbers must match exactly.
+      - name: Fail if any reported number changed
+        run: git diff --exit-code -- "examples/expected/*.json" "examples/expected/*.md"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: example-report
+          path: examples/expected/
+          if-no-files-found: error
