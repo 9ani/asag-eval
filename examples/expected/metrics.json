@@ -112,9 +112,9 @@
         "ci_high": 0.483643
       },
       "aurc": {
-        "value": 0.031515,
+        "value": 0.031524,
         "ci_low": 0.013141,
-        "ci_high": 0.058336
+        "ci_high": 0.058348
       }
     },
     "argmax_mismatches": 0,
@@ -171,6 +171,7 @@
     ],
     "selective": [
       {
+        "target_coverage": 1.0,
         "coverage": 1.0,
         "n": 400,
         "threshold": 0.3993,
@@ -182,6 +183,7 @@
         "extreme_error_rate": 0.0575
       },
       {
+        "target_coverage": 0.9,
         "coverage": 0.9,
         "n": 360,
         "threshold": 0.5821,
@@ -193,6 +195,7 @@
         "extreme_error_rate": 0.038889
       },
       {
+        "target_coverage": 0.8,
         "coverage": 0.8,
         "n": 320,
         "threshold": 0.74,
@@ -204,6 +207,7 @@
         "extreme_error_rate": 0.028125
       },
       {
+        "target_coverage": 0.7,
         "coverage": 0.7,
         "n": 280,
         "threshold": 0.8525,
@@ -215,6 +219,7 @@
         "extreme_error_rate": 0.025
       },
       {
+        "target_coverage": 0.5,
         "coverage": 0.5,
         "n": 200,
         "threshold": 0.96,

@@ -89,7 +89,11 @@ jobs:
           --out examples/expected
       # Figures depend on the font renderer, so only the numbers must match exactly.
       - name: Fail if any reported number changed
-        run: git diff --exit-code -- "examples/expected/*.json" "examples/expected/*.md"
+        run: |
+          # Marks new files as tracked-but-empty, so a result missing from the
+          # committed set shows up in the diff as well.
+          git add --intent-to-add examples/expected
+          git diff --exit-code -- "examples/expected/*.json" "examples/expected/*.md"
       - uses: actions/upload-artifact@v7
         with:
           name: example-report

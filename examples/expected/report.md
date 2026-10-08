@@ -45,7 +45,7 @@ Rows are gold scores, columns are predicted scores.
 
 Answers whose emitted score is not the most probable one: 0.
 
-Accepting only the most confident answers and sending the rest to a teacher:
+Accepting only answers at or above a confidence threshold and sending the rest to a teacher:
 
 | Coverage | Answers | Lowest confidence | Accuracy | QWK | Extreme errors |
 | --- | --- | --- | --- | --- | --- |

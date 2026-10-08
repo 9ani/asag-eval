@@ -84,6 +84,25 @@ def test_aurc_is_worse_when_confidence_ranks_errors_first():
     assert aurc(good) < errors.mean() < aurc(bad)
 
 
+def test_risk_coverage_does_not_depend_on_the_order_of_tied_answers():
+    # A threshold cannot separate answers with equal confidence, so where the one error
+    # sits in the file must not matter.
+    confidence = np.full(4, 0.9)
+    _, error_first = risk_coverage(confidence, np.array([True, False, False, False]))
+    _, error_last = risk_coverage(confidence, np.array([False, False, False, True]))
+
+    assert error_first == pytest.approx([0.25] * 4)
+    assert error_last == pytest.approx(error_first)
+
+
+def test_risk_coverage_averages_errors_inside_a_tie_only():
+    confidence = np.array([0.9, 0.7, 0.7, 0.5])
+    errors = np.array([False, True, False, True])
+    _, risk = risk_coverage(confidence, errors)
+    # The two answers at 0.7 share one error: half an error each.
+    assert risk == pytest.approx([0, 0.25, 1 / 3, 0.5])
+
+
 def test_selective_agreement_keeps_the_most_confident_share():
     y_true = np.array([2, 1, 0, 2])
     y_pred = np.array([2, 1, 2, 0])
@@ -93,8 +112,19 @@ def test_selective_agreement_keeps_the_most_confident_share():
     everything = selective_agreement(y_true, y_pred, confidence, coverage=1.0, n_classes=3)
 
     assert (half["n"], half["threshold"], half["accuracy"]) == (2, 0.8, 1.0)
+    assert (half["target_coverage"], half["coverage"]) == (0.5, 0.5)
     assert (everything["n"], everything["threshold"], everything["accuracy"]) == (4, 0.6, 0.5)
     assert everything["extreme_error_rate"] == 0.5
+
+
+def test_selective_agreement_accepts_every_answer_at_the_threshold():
+    # Three answers tie at the cut. A threshold accepts all of them or none, so the
+    # realised coverage is 100% although 50% was asked for, whatever the row order.
+    y_true = np.array([0, 1, 2, 0])
+    y_pred = np.array([0, 1, 2, 2])
+    for confidence in (np.array([0.9, 0.8, 0.8, 0.8]), np.array([0.8, 0.8, 0.8, 0.9])):
+        result = selective_agreement(y_true, y_pred, confidence, 0.5, n_classes=3)
+        assert (result["n"], result["coverage"], result["threshold"]) == (4, 1.0, 0.8)
 
 
 def test_selective_agreement_rounds_the_kept_share_up():

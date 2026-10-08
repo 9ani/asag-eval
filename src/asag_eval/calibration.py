@@ -3,6 +3,9 @@
 A grader that routes uncertain answers to a teacher needs two things from its
 probabilities. They must be calibrated (80% confidence means 80% correct), and they must
 rank answers so that the errors sit at the low-confidence end.
+
+Answers with equal confidence cannot be told apart by a threshold. Every function here
+treats such a tie as one group, so no result depends on the order of rows in the file.
 """
 
 import math
@@ -59,11 +62,15 @@ def risk_coverage(confidence: np.ndarray, errors: np.ndarray) -> tuple[np.ndarra
     """Error rate among the accepted answers as the acceptance threshold is lowered.
 
     Point ``i`` accepts the ``i + 1`` most confident answers: ``coverage`` is their share of
-    all answers and ``risk`` their error rate. Ties keep file order.
+    all answers and ``risk`` their error rate. Inside a group of equal confidence each
+    answer carries the group's mean error, which is the expected curve over all orders of
+    the tied answers.
     """
     order = np.argsort(-confidence, kind="stable")
+    _, group, size = np.unique(-confidence[order], return_inverse=True, return_counts=True)
+    tied_error = (np.bincount(group, weights=errors[order].astype(float)) / size)[group]
     accepted = np.arange(1, len(order) + 1)
-    return accepted / len(order), np.cumsum(errors[order]) / accepted
+    return accepted / len(order), np.cumsum(tied_error) / accepted
 
 
 def aurc(risk: np.ndarray) -> float:
@@ -74,15 +81,20 @@ def aurc(risk: np.ndarray) -> float:
 def selective_agreement(
     y_true: np.ndarray, y_pred: np.ndarray, confidence: np.ndarray, coverage: float, n_classes: int
 ) -> dict[str, float | int]:
-    """Agreement metrics on the most confident ``coverage`` share of the answers.
+    """Agreement metrics on the answers that a confidence threshold accepts.
 
-    ``threshold`` is the lowest confidence still accepted; answers below it would go to a
-    human reviewer.
+    ``threshold`` is the confidence of the ``ceil(coverage * n)``-th most confident answer.
+    Every answer at or above it is accepted and the rest would go to a human reviewer.
+    Answers tied at the threshold are accepted together, so the realised ``coverage`` can
+    be larger than ``target_coverage``.
     """
-    kept = np.argsort(-confidence, kind="stable")[: math.ceil(coverage * len(confidence))]
+    rank = max(1, math.ceil(coverage * len(confidence)))
+    threshold = np.sort(confidence)[-rank]
+    accepted = confidence >= threshold
     return {
-        "coverage": coverage,
-        "n": len(kept),
-        "threshold": float(confidence[kept[-1]]),
-        **agreement_metrics(confusion_matrix(y_true[kept], y_pred[kept], n_classes)),
+        "target_coverage": coverage,
+        "coverage": float(accepted.mean()),
+        "n": int(accepted.sum()),
+        "threshold": float(threshold),
+        **agreement_metrics(confusion_matrix(y_true[accepted], y_pred[accepted], n_classes)),
     }

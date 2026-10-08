@@ -1,6 +1,6 @@
 # Paired comparison: `sample_predictions.jsonl` (A) vs `sample_baseline.jsonl` (B)
 
-- Answers scored by both models: 397 from 40 questions
+- Answers scored by both models: 397 from 40 questions (left out: 3 scored only by A, 0 only by B)
 - A SHA-256: `fb239a1ab18fd121b6306c064cf6c0074ac6973a4a63a22cecd924d8ee5f53fc`
 - B SHA-256: `05830eadc8402527e2a24514d9dd2f918cdd5ed672bdfff7c989a32edee738ac`
 - Intervals and p-values: paired bootstrap over questions, 2000 resamples, seed 0

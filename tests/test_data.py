@@ -58,9 +58,57 @@ def test_unscored_answers_are_counted_not_dropped_silently(tmp_path):
     assert preds.n_unscored == 1
 
 
-def test_probabilities_are_optional_but_all_or_nothing(tmp_path):
-    path = write_jsonl(tmp_path / "p.jsonl", [record("a1"), record("a2", probabilities=None)])
+def test_probabilities_are_optional(tmp_path):
+    path = write_jsonl(
+        tmp_path / "p.jsonl", [record("a1", probabilities=None), record("a2", probabilities=None)]
+    )
     assert load_predictions(path).probs is None
+
+
+def test_probabilities_for_only_some_answers_are_rejected(tmp_path):
+    # Calibration needs every answer; a partial file would silently lose the whole analysis.
+    path = write_jsonl(tmp_path / "p.jsonl", [record("a1"), record("a2", probabilities=None)])
+    with pytest.raises(ValueError, match="1 of 2 scored answers have no score_probabilities"):
+        load_predictions(path)
+
+
+def test_integer_ids_are_accepted_as_text(tmp_path):
+    path = write_jsonl(tmp_path / "p.jsonl", [record(17)])
+    assert load_predictions(path).ids == ("17",)
+
+
+def test_file_with_a_byte_order_mark_is_read(tmp_path):
+    path = tmp_path / "p.jsonl"
+    path.write_text(json.dumps(record("a1")) + "\n", encoding="utf-8-sig")
+    assert load_predictions(path).ids == ("a1",)
+
+
+def test_unicode_line_separator_inside_a_string_does_not_split_the_record(tmp_path):
+    path = tmp_path / "p.jsonl"
+    rows = [record("a1", note=f"first {chr(0x2028)} second"), record("a2")]
+    path.write_text(
+        "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows), encoding="utf-8"
+    )
+    assert load_predictions(path).ids == ("a1", "a2")
+
+
+def test_file_that_is_not_utf8_is_rejected_by_name(tmp_path):
+    path = tmp_path / "latin.jsonl"
+    path.write_bytes('{"id": "café", "true_score": 1, "predicted_score": 1}'.encode("latin-1"))
+    with pytest.raises(ValueError, match=r"latin\.jsonl: not valid UTF-8"):
+        load_predictions(path)
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["[" * 100_000, '{"id": "a1", "true_score": ' + "9" * 5000 + "}"],
+    ids=["nesting too deep", "integer too long"],
+)
+def test_json_the_parser_cannot_handle_is_reported_not_raised(tmp_path, text):
+    path = tmp_path / "bad.jsonl"
+    path.write_text(json.dumps(record("a0")) + "\n" + text + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match=r"bad\.jsonl line 2: not valid JSON"):
+        load_predictions(path)
 
 
 def test_integral_floats_written_by_pandas_are_accepted(tmp_path):
@@ -80,6 +128,8 @@ def test_integral_floats_written_by_pandas_are_accepted(tmp_path):
         ([record("a1", true=3)], "line 1: true_score must be an integer from 0 to 2, got 3"),
         ([record("a1", predicted=1.5)], "line 1: predicted_score must be an integer"),
         ([record("a1", predicted=True)], "line 1: predicted_score must be an integer"),
+        ([record("a1", true=10**400)], "line 1: true_score must be an integer from 0 to 2"),
+        ([record(1.0)], "line 1: id must be a string or an integer, got 1.0"),
         ([record("a1", probabilities=(0.5, 0.5))], "line 1: score_probabilities needs keys"),
         ([record("a1", probabilities=(0.5, 0.4, 0.4))], "line 1: score_probabilities sum to 1.3"),
         ([record("a1", probabilities=(1.2, -0.2, 0.0))], "line 1: score_probabilities must be"),

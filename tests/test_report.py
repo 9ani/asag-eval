@@ -54,7 +54,7 @@ def test_result_records_where_the_numbers_came_from(sample):
 
 def test_selective_table_trades_coverage_for_accuracy(sample):
     rows = evaluate(load_predictions(sample), n_boot=50)["confidence"]["selective"]
-    assert [row["coverage"] for row in rows] == [1.0, 0.9, 0.8, 0.7, 0.5]
+    assert [row["target_coverage"] for row in rows] == [1.0, 0.9, 0.8, 0.7, 0.5]
     assert rows[0]["n"] == 400
     assert rows[-1]["accuracy"] > rows[0]["accuracy"]
 
@@ -79,6 +79,17 @@ def test_undefined_metrics_become_null_in_strict_json(tmp_path):
     assert "| Quadratic weighted kappa (QWK) | n/a | [n/a, n/a] |" in render_evaluation(result)
 
 
+def test_report_warns_when_answers_cannot_be_grouped_by_question(tmp_path):
+    path = tmp_path / "flat.jsonl"
+    rows = [{"id": f"a{i}", "true_score": i % 3, "predicted_score": i % 2} for i in range(12)]
+    path.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+
+    result = evaluate(load_predictions(path), n_boot=20)
+
+    assert result["settings"]["resampling_unit"] == "answer"
+    assert "No question ids were found" in render_evaluation(result)
+
+
 def test_report_shows_the_headline_numbers(sample):
     result = evaluate(load_predictions(sample), n_boot=50)
     report = render_evaluation(result, figures=("confusion_matrix.png",))
@@ -99,6 +110,8 @@ def test_comparison_uses_only_answers_scored_by_both_models(sample, baseline):
     result = compare(load_predictions(sample), load_predictions(baseline), n_boot=200)
     # The baseline failed to produce a score for three answers.
     assert result["paired_answers"] == 397
+    assert result["unpaired"] == {"a": 3, "b": 0}
+    assert "left out: 3 scored only by A, 0 only by B" in render_comparison(result)
     qwk = result["metrics"]["qwk"]
     assert qwk["difference"] == pytest.approx(qwk["a"] - qwk["b"], abs=2e-6)
     assert qwk["ci_low"] > 0 and qwk["p_value"] < 0.05

@@ -51,6 +51,11 @@ def _agreement(preds: Predictions, index: np.ndarray) -> list[float]:
     return [metrics[name] for name in METRICS]
 
 
+def _resampling_unit(question_ids: np.ndarray) -> str:
+    """``answer`` when no two answers share a question: the bootstrap is then answer-level."""
+    return "question" if len(np.unique(question_ids)) < len(question_ids) else "answer"
+
+
 def _describe(preds: Predictions) -> dict:
     return {
         "file": preds.source,
@@ -100,7 +105,7 @@ def evaluate(preds: Predictions, n_boot: int = 2000, seed: int = 0, n_bins: int 
             "n_boot": n_boot,
             "seed": seed,
             "confidence_level": CONFIDENCE_LEVEL,
-            "resampling_unit": "question",
+            "resampling_unit": _resampling_unit(preds.question_ids),
             "n_bins": n_bins,
         },
         "metrics": {name: estimates[name] for name in METRICS},
@@ -163,12 +168,15 @@ def compare(a: Predictions, b: Predictions, n_boot: int = 2000, seed: int = 0) -
             "tool": {"name": "asag-eval", "version": __version__},
             "inputs": {"a": _describe(a), "b": _describe(b)},
             "paired_answers": len(pairs),
+            # Scored by one model only and therefore left out. A model that fails on the
+            # hard answers would otherwise look better than it is, unnoticed.
+            "unpaired": {"a": len(a.ids) - len(pairs), "b": len(b.ids) - len(pairs)},
             "questions": len(np.unique(questions)),
             "settings": {
                 "n_boot": n_boot,
                 "seed": seed,
                 "confidence_level": CONFIDENCE_LEVEL,
-                "resampling_unit": "question",
+                "resampling_unit": _resampling_unit(questions),
             },
             "metrics": {
                 name: {
@@ -220,6 +228,15 @@ def _estimates_table(estimates: dict, level: float) -> list[str]:
     )
 
 
+def _ungrouped_warning(settings: dict) -> list[str]:
+    if settings["resampling_unit"] == "question":
+        return []
+    return [
+        "- **No question ids were found**, so single answers were resampled. If several "
+        "answers share a question, these intervals are too narrow: add `question_id`."
+    ]
+
+
 def render_evaluation(result: dict, figures: tuple[str, ...] = ()) -> str:
     """The evaluation as a Markdown report."""
     source, settings = result["input"], result["settings"]
@@ -230,8 +247,9 @@ def render_evaluation(result: dict, figures: tuple[str, ...] = ()) -> str:
         f"- Answers: {source['answers']} ({source['scored']} scored, {source['unscored']} "
         f"without a parsed score) from {source['questions']} questions",
         f"- Input SHA-256: `{source['sha256']}`",
-        f"- Intervals: {settings['confidence_level']:.0%} percentile bootstrap over questions, "
-        f"{settings['n_boot']} resamples, seed {settings['seed']}",
+        f"- Intervals: {settings['confidence_level']:.0%} percentile bootstrap over "
+        f"{settings['resampling_unit']}s, {settings['n_boot']} resamples, seed {settings['seed']}",
+        *_ungrouped_warning(settings),
         f"- Tool: asag-eval {result['tool']['version']}",
         "",
         "## Agreement with the gold scores",
@@ -276,13 +294,14 @@ def render_evaluation(result: dict, figures: tuple[str, ...] = ()) -> str:
             f"Answers whose emitted score is not the most probable one: "
             f"{confidence['argmax_mismatches']}.",
             "",
-            "Accepting only the most confident answers and sending the rest to a teacher:",
+            "Accepting only answers at or above a confidence threshold and sending the rest "
+            "to a teacher:",
             "",
             *_table(
                 ["Coverage", "Answers", "Lowest confidence", "Accuracy", "QWK", "Extreme errors"],
                 [
                     [
-                        f"{row['coverage']:.0%}",
+                        f"{row['coverage']:.1%}".replace(".0%", "%"),
                         str(row["n"]),
                         _number(row["threshold"]),
                         _number(row["accuracy"]),
@@ -306,11 +325,14 @@ def render_comparison(result: dict) -> str:
             f"# Paired comparison: `{a['file']}` (A) vs `{b['file']}` (B)",
             "",
             f"- Answers scored by both models: {result['paired_answers']} "
-            f"from {result['questions']} questions",
+            f"from {result['questions']} questions "
+            f"(left out: {result['unpaired']['a']} scored only by A, "
+            f"{result['unpaired']['b']} only by B)",
             f"- A SHA-256: `{a['sha256']}`",
             f"- B SHA-256: `{b['sha256']}`",
-            f"- Intervals and p-values: paired bootstrap over questions, "
+            f"- Intervals and p-values: paired bootstrap over {settings['resampling_unit']}s, "
             f"{settings['n_boot']} resamples, seed {settings['seed']}",
+            *_ungrouped_warning(settings),
             f"- Tool: asag-eval {result['tool']['version']}",
             "",
             *_table(
