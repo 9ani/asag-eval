@@ -33,6 +33,9 @@ dev = [
   "scikit-learn>=1.4",
 ]
 
+[project.scripts]
+asag-eval = "asag_eval.cli:main"
+
 [project.urls]
 Repository = "https://github.com/9ani/asag-eval"
 Issues = "https://github.com/9ani/asag-eval/issues"
@@ -43,6 +46,8 @@ where = ["src"]
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers"
 testpaths = ["tests"]
+# A numerical warning is a wrong result waiting to happen: fail on it.
+filterwarnings = ["error"]
 
 [tool.coverage.run]
 source = ["asag_eval"]

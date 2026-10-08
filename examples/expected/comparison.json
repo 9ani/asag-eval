@@ -1,0 +1,80 @@
+{
+  "tool": {
+    "name": "asag-eval",
+    "version": "0.1.0"
+  },
+  "inputs": {
+    "a": {
+      "file": "sample_predictions.jsonl",
+      "sha256": "fb239a1ab18fd121b6306c064cf6c0074ac6973a4a63a22cecd924d8ee5f53fc",
+      "answers": 400,
+      "scored": 400,
+      "unscored": 0
+    },
+    "b": {
+      "file": "sample_baseline.jsonl",
+      "sha256": "05830eadc8402527e2a24514d9dd2f918cdd5ed672bdfff7c989a32edee738ac",
+      "answers": 400,
+      "scored": 397,
+      "unscored": 3
+    }
+  },
+  "paired_answers": 397,
+  "questions": 40,
+  "settings": {
+    "n_boot": 2000,
+    "seed": 0,
+    "confidence_level": 0.95,
+    "resampling_unit": "question"
+  },
+  "metrics": {
+    "qwk": {
+      "a": 0.80022,
+      "b": 0.530286,
+      "difference": 0.269934,
+      "ci_low": 0.192236,
+      "ci_high": 0.350745,
+      "p_value": 0.001
+    },
+    "kappa": {
+      "a": 0.811626,
+      "b": 0.550279,
+      "difference": 0.261347,
+      "ci_low": 0.194559,
+      "ci_high": 0.333253,
+      "p_value": 0.001
+    },
+    "macro_f1": {
+      "a": 0.875597,
+      "b": 0.701192,
+      "difference": 0.174405,
+      "ci_low": 0.129202,
+      "ci_high": 0.225872,
+      "p_value": 0.001
+    },
+    "accuracy": {
+      "a": 0.876574,
+      "b": 0.70529,
+      "difference": 0.171285,
+      "ci_low": 0.126582,
+      "ci_high": 0.219144,
+      "p_value": 0.001
+    },
+    "mae": {
+      "a": 0.18136,
+      "b": 0.428212,
+      "difference": -0.246851,
+      "ci_low": -0.31566,
+      "ci_high": -0.183839,
+      "p_value": 0.001
+    },
+    "extreme_error_rate": {
+      "a": 0.057935,
+      "b": 0.133501,
+      "difference": -0.075567,
+      "ci_low": -0.105263,
+      "ci_high": -0.045567,
+      "p_value": 0.001
+    }
+  }
+}

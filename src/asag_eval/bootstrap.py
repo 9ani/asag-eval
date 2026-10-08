@@ -5,6 +5,7 @@ independent observations. Resampling whole questions keeps that dependence in ev
 replicate; resampling single answers would report intervals that are too narrow.
 """
 
+import warnings
 from collections.abc import Callable, Sequence
 
 import numpy as np
@@ -39,7 +40,10 @@ def percentile_interval(
 ) -> tuple[np.ndarray, np.ndarray]:
     """Lower and upper percentile bounds per column; undefined (NaN) replicates are skipped."""
     tail = (1 - level) / 2 * 100
-    low, high = np.nanpercentile(replicates, [tail, 100 - tail], axis=0)
+    with warnings.catch_warnings():
+        # A statistic undefined in every replicate has no interval: NaN, not a warning.
+        warnings.simplefilter("ignore", RuntimeWarning)
+        low, high = np.nanpercentile(replicates, [tail, 100 - tail], axis=0)
     return low, high
 
 
