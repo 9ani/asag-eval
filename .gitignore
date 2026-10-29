@@ -15,3 +15,8 @@ htmlcov/
 
 # Evaluation outputs (regenerate them with `asag-eval evaluate`)
 /results/
+
+# Container CI (written by ci/up.sh and the Jenkinsfile; ci/.env and ci/.kubeconfig are secrets)
+/reports/
+/ci/.env
+/ci/.kubeconfig

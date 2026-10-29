@@ -1,0 +1,71 @@
+# ${IMAGE} and ${CHANGE_CAUSE} are filled in by the Jenkinsfile (stage "Deploy to staging"):
+#   sed -e "s|\${IMAGE}|asag-eval:<commit>|" -e "s|\${CHANGE_CAUSE}|<commit>|" k8s/deployment.yaml | kubectl apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: asag-eval
+  namespace: asag-staging
+  labels:
+    app.kubernetes.io/name: asag-eval
+  annotations:
+    # Shown by `kubectl rollout history`: which commit each revision runs.
+    kubernetes.io/change-cause: "${CHANGE_CAUSE}"
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: asag-eval
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # A new pod must be ready before an old one goes: no downtime during a deploy.
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: asag-eval
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: asag-eval
+          image: ${IMAGE}
+          # Images are loaded into the kind node by the pipeline, not pulled from a registry.
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

@@ -2,6 +2,7 @@
 
 asag-eval evaluate predictions.jsonl --out results
 asag-eval compare model.jsonl baseline.jsonl --out results
+asag-eval serve --host 0.0.0.0 --port 8080
 """
 
 import argparse
@@ -9,7 +10,7 @@ import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
-from asag_eval import __version__
+from asag_eval import __version__, server
 from asag_eval.data import load_predictions
 from asag_eval.report import compare, evaluate, render_comparison, render_evaluation, write_json
 
@@ -51,6 +52,10 @@ def _build_parser() -> argparse.ArgumentParser:
     two = commands.add_parser("compare", parents=[shared], help="paired comparison A - B")
     two.add_argument("a", type=Path, help="predictions of model A")
     two.add_argument("b", type=Path, help="predictions of model B on the same answers")
+
+    http = commands.add_parser("serve", help="serve POST /evaluate over HTTP")
+    http.add_argument("--host", default="127.0.0.1", help="address to bind (default: 127.0.0.1)")
+    http.add_argument("--port", type=int, default=8080, help="port (default: 8080)")
     return parser
 
 
@@ -88,6 +93,9 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser = _build_parser()
     args = parser.parse_args(argv)
     try:
+        if args.command == "serve":
+            server.serve(args.host, args.port)  # an address in use ends as one line, too
+            return
         report = _evaluate(args) if args.command == "evaluate" else _compare(args)
     except (OSError, ValueError) as exc:
         # Bad input is the user's to fix: one clear line and exit code 2, not a traceback.

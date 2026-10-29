@@ -98,11 +98,15 @@ def _parse(text: str, line: str) -> dict:
 def load_predictions(path: str | Path, n_classes: int = 3) -> Predictions:
     """Read and validate a predictions file; raise ``ValueError`` naming the bad line."""
     path = Path(path)
-    content = path.read_bytes()
+    return parse_predictions(path.read_bytes(), path.name, n_classes)
+
+
+def parse_predictions(content: bytes, source: str, n_classes: int = 3) -> Predictions:
+    """Validate predictions given as bytes; ``source`` names them in errors and results."""
     try:
         text = content.decode("utf-8-sig")  # tolerate the byte order mark editors add
     except UnicodeDecodeError as exc:
-        raise ValueError(f"{path.name}: not valid UTF-8 ({exc.reason})") from exc
+        raise ValueError(f"{source}: not valid UTF-8 ({exc.reason})") from exc
     ids: list[str] = []
     questions: list[str] = []
     y_true: list[int] = []
@@ -115,7 +119,7 @@ def load_predictions(path: str | Path, n_classes: int = 3) -> Predictions:
     for number, record in enumerate(text.split("\n"), start=1):
         if not record.strip():
             continue
-        line = f"{path.name} line {number}"
+        line = f"{source} line {number}"
         row = _parse(record, line)
         for field in ("id", "true_score"):
             if row.get(field) is None:
@@ -134,14 +138,14 @@ def load_predictions(path: str | Path, n_classes: int = 3) -> Predictions:
         probs.append(_probabilities(row, n_classes, line))
 
     if not seen:
-        raise ValueError(f"{path.name}: no records")
+        raise ValueError(f"{source}: no records")
     if not ids:
-        raise ValueError(f"{path.name}: no scored answers")
+        raise ValueError(f"{source}: no scored answers")
     without_probs = sum(row is None for row in probs)
     if 0 < without_probs < len(probs):
         # A partial file would silently lose the whole calibration analysis.
         raise ValueError(
-            f"{path.name}: {without_probs} of {len(probs)} scored answers have no "
+            f"{source}: {without_probs} of {len(probs)} scored answers have no "
             "score_probabilities; give them for every answer or for none"
         )
     return Predictions(
@@ -152,6 +156,6 @@ def load_predictions(path: str | Path, n_classes: int = 3) -> Predictions:
         probs=None if without_probs else np.array(probs, dtype=float),
         n_classes=n_classes,
         n_unscored=len(seen) - len(ids),
-        source=path.name,
+        source=source,
         sha256=hashlib.sha256(content).hexdigest(),
     )

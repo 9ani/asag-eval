@@ -353,7 +353,11 @@ def render_comparison(result: dict) -> str:
     )
 
 
+def to_json(result: dict) -> str:
+    """A result as strict JSON with a stable layout: the exact text of the result files."""
+    return json.dumps(result, indent=2, allow_nan=False) + "\n"
+
+
 def write_json(result: dict, path: Path) -> None:
     """Write a result as strict JSON with a stable layout."""
-    text = json.dumps(result, indent=2, allow_nan=False)
-    path.write_text(text + "\n", encoding="utf-8", newline="\n")
+    path.write_text(to_json(result), encoding="utf-8", newline="\n")
