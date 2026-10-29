@@ -1,0 +1,32 @@
+# Jenkins for this repository. Start everything with ci/up.sh.
+name: asag-ci
+
+services:
+  jenkins:
+    build: jenkins
+    image: asag-jenkins:local
+    container_name: asag-jenkins
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:?run ci/up.sh, which writes ci/.env}
+    # Docker Desktop gives the socket to root:root (0660); on Linux use the docker group id.
+    group_add:
+      - "${DOCKER_GID:-0}"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      # Docker outside of Docker: builds use the host daemon, so kind can load the images.
+      # Whoever controls this socket controls the host: acceptable on a single-user laptop only.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./.kubeconfig:/run/secrets/kubeconfig:ro
+    networks:
+      - kind
+
+volumes:
+  jenkins_home:
+
+networks:
+  # Created by kind: Jenkins reaches the API server and NodePorts by container name.
+  kind:
+    external: true
