@@ -34,6 +34,21 @@ asag-eval evaluate examples/sample_predictions.jsonl --out examples/expected
 asag-eval compare examples/sample_predictions.jsonl examples/sample_baseline.jsonl --out examples/expected
 ```
 
+## Lock files
+
+`requirements.lock` (run time) and `requirements-dev.lock` (development, tests and the
+build backend) pin every package with its hashes for the container images. After a change
+to the dependencies in `pyproject.toml`, regenerate both in the image's Python:
+
+```bash
+docker run --rm -v "$PWD:/src" -w /src python:3.13-slim sh -c '
+  pip install -q uv==0.9.5
+  export UV_CUSTOM_COMPILE_COMMAND="see CONTRIBUTING.md (Lock files)"
+  uv pip compile pyproject.toml --python-version 3.13 --generate-hashes --no-annotate -o requirements.lock
+  echo "setuptools>=77" | uv pip compile pyproject.toml - --extra dev --python-version 3.13 \
+    --generate-hashes --no-annotate -o requirements-dev.lock'
+```
+
 ## Releasing
 
 1. Set the new version in `pyproject.toml` and `CITATION.cff`, regenerate
