@@ -40,6 +40,12 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+          lifecycle:
+            # Keep serving while the Service removes this pod from its endpoints; only
+            # then does SIGTERM stop the server. Without it a rollout drops requests.
+            preStop:
+              sleep:
+                seconds: 5
           readinessProbe:
             httpGet:
               path: /healthz

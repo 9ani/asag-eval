@@ -44,6 +44,15 @@ def test_health_reports_the_version(service):
     )
 
 
+def test_health_probes_stay_out_of_the_log(service, sample, capsys):
+    _request(f"{service}/healthz")
+    _request(f"{service}/evaluate?n_boot=10", sample.read_bytes())
+
+    logged = capsys.readouterr().err
+    assert "/healthz" not in logged
+    assert '"POST /evaluate?n_boot=10 HTTP/1.1" 200' in logged
+
+
 def test_evaluate_returns_the_committed_metrics(service, sample, expected, assert_matches):
     status, result = _request(
         f"{service}/evaluate?name=sample_predictions.jsonl", sample.read_bytes()

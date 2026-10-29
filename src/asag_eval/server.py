@@ -84,6 +84,11 @@ class _Handler(BaseHTTPRequestHandler):
             return
         self._reply(HTTPStatus.OK, result)
 
+    def log_request(self, code: int | str = "-", size: int | str = "-") -> None:
+        # Probes call /healthz every few seconds; logging them would bury the evaluations.
+        if urlsplit(self.path).path != "/healthz":
+            super().log_request(code, size)
+
     def _reply(self, status: HTTPStatus, payload: dict) -> None:
         body = to_json(payload).encode("utf-8")
         self.send_response(status)
