@@ -142,6 +142,7 @@ def test_serve_command_passes_host_and_port(monkeypatch):
     assert calls == [("0.0.0.0", 9000), ("127.0.0.1", 8080)]
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="SO_REUSEADDR lets Windows bind a port twice")
 def test_address_in_use_exits_with_one_clear_line(capsys):
     taken = server.make_server("127.0.0.1", 0)
     try:
